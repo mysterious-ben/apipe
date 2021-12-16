@@ -112,14 +112,14 @@ def delayed_cached(
     override: bool = False,
     verbose: bool = True,
 ):
-    """Delayed and cache function output on the disk (dask.delayed + dutil.pipeline.cached)
+    """dask.delayed + apipe.cached
 
     Args:
-        see dutil.pipeline.cached
+        see apipe.cached
     """
 
     def decorator(foo):
-        """Delay and cache function output on disk (dask.delayed + dutil.pipeline.cached)"""
+        """Delay and cache function output on disk (dask.delayed + apipe.cached)"""
         # @functools.wraps(foo)  # Can't use: Delayed objects are immutable
         @dask.delayed(name=name, pure=False, nout=nout)  # pylint: disable=E1120
         @cached(

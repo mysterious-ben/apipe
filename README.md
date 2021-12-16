@@ -2,6 +2,12 @@
 
 **A-Pipe** allows to create data pipelines with lazy computation and caching.
 
+**Features:**
+- Lazy computation and cache loading
+- Pickle and parquet serialization
+- Support for hashing of `numpy` arrays and `pandas` DataFrames
+- Support of Delayed objects
+
 ## Installation
 
 ```shell

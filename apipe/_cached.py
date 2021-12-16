@@ -309,10 +309,10 @@ def cached(
     """Cache function output on the disk
 
     Features:
+    - Lazy computation and cache loading
+    - Hashing of complex arguments (arrays and DataFrames)
     - Pickle and parquet serialization
-    - Special treatment for Delayed objects
-    - Lazy cache loading
-    - Hashing of complex arguments
+    - Support of Delayed objects
 
     Args:
         name: name of the cache file
