@@ -61,6 +61,4 @@ jobs:
         poetry --version
     - name: Build python package
       run: |
-        git describe --tags --abbrev=0
-        poetry version $(git describe --tags --abbrev=0)
         poetry build
