@@ -1,0 +1,36 @@
+name: Publish Python Package
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  publish:
+    if: github.event_name == 'release'
+    name: Publish
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.head_ref }}
+    - name: Set up python (required to determine version from git ref/hash)
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        poetry --version
+    - name: Install poetry-version-plugin
+      run: |
+        poetry plugin add poetry-version-plugin
+    - name: Build and publish on PyPI
+      env:
+        POETRY_HTTP_BASIC_PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        POETRY_HTTP_BASIC_PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        poetry build
+        poetry publish
