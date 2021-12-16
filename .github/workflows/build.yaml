@@ -58,10 +58,13 @@ jobs:
       run: |
         pip install pytest
         pytest -vv -m "not integration"
+    - name: Install poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        poetry --version
+    - name: Install poetry-version-plugin
+      run: |
+        poetry plugin add poetry-version-plugin
     - name: Build python package
       run: |
-        echo "Build package version $VERSION"
-        pip install setuptools wheel
-        python setup.py sdist bdist_wheel
-      env:
-        VERSION: ${{ steps.vars.outputs.version }}
+        poetry build
