@@ -6,7 +6,7 @@
 - Lazy computation and cache loading
 - Pickle and parquet serialization
 - Support for hashing of `numpy` arrays and `pandas` DataFrames
-- Support of Delayed objects
+- Support for `dask.Delayed` objects
 
 ## Installation
 
@@ -53,3 +53,5 @@ diff = compute(s1, s2, eps)
 # --- Trigger pipeline execution
 print('diff: {:.3f}'.format(apipe.delayed_compute((diff, ))[0]))
 ```
+
+See more examples in a [notebook](https://github.com/mysterious-ben/ds-examples/blob/master/dataflows/dask_delayed_with_caching.ipynb).

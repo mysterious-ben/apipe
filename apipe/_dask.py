@@ -112,7 +112,9 @@ def delayed_cached(
     override: bool = False,
     verbose: bool = True,
 ):
-    """dask.delayed + apipe.cached
+    """Lazy function execution with caching of the output on the disk
+
+    dask.delayed + apipe.cached
 
     Args:
         see apipe.cached

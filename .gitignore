@@ -10,7 +10,6 @@ dist/
 .vscode/
 
 cache/
-notebooks/
 .ipynb_checkpoints/
 *.pickle
 *.parquet
