@@ -3,7 +3,7 @@ import json
 import multiprocessing
 import shutil
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import cloudpickle
 import numpy as np
@@ -290,6 +290,17 @@ class CachedResultItem:
             return self.result.__cached_hash__()[self.item]
 
 
+def load(
+    cached_result: Union[CachedResultItem, Iterable[CachedResultItem]]
+) -> Union[Any, Tuple[Any, ...]]:
+    """Load cached objects"""
+
+    if isinstance(cached_result, CachedResultItem):
+        return cached_result.load()
+    else:
+        return tuple(r.load() for r in cached_result)
+
+
 def cached(
     name: Optional[str] = None,
     name_prefix: str = "",
@@ -309,7 +320,6 @@ def cached(
     - Lazy computation and cache loading
     - Hashing of complex arguments (arrays and DataFrames)
     - Pickle and parquet serialization
-    - Support of Delayed objects
 
     Args:
         name: name of the cache file
@@ -337,7 +347,7 @@ def cached(
         """Cache function output on the disk"""
 
         @functools.wraps(foo)
-        def new_foo(*args, **kwargs) -> Union[CachedResultItem, Tuple[CachedResultItem, ...]]:
+        def cached_foo(*args, **kwargs) -> Union[CachedResultItem, Tuple[CachedResultItem, ...]]:
             fullname = _get_cache_name(
                 name=name,
                 name_prefix=name_prefix,
@@ -390,7 +400,49 @@ def cached(
                     )
             return output
 
-        return new_foo
+        return cached_foo
+
+    return decorator
+
+
+def eager_cached(
+    name: Optional[str] = None,
+    name_prefix: str = "",
+    parameters: Optional[dict] = None,
+    ignore_args: Optional[bool] = None,
+    ignore_kwargs: Optional[Union[bool, List[str]]] = None,
+    folder: Union[str, Path] = CACHE_FOLDER,
+    ftype: str = "pickle",
+    kwargs_sep: str = "|",
+    nout: Optional[int] = None,
+    override: bool = False,
+    verbose: bool = True,
+):
+    """Cache function output on the disk (eager load)"""
+
+    def decorator(foo):
+        """Cache function output on the disk (eager load)"""
+
+        cached_foo = cached(
+            name=name,
+            name_prefix=name_prefix,
+            parameters=parameters,
+            ignore_args=ignore_args,
+            ignore_kwargs=ignore_kwargs,
+            folder=folder,
+            ftype=ftype,
+            kwargs_sep=kwargs_sep,
+            nout=nout,
+            override=override,
+            verbose=verbose,
+        )(foo)
+
+        @functools.wraps(foo)
+        def eager_cached_foo(*args, **kwargs):
+            cached_output = cached_foo(*args, **kwargs)
+            return load(cached_output)
+
+        return eager_cached_foo
 
     return decorator
 

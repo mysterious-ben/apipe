@@ -13,6 +13,7 @@ from apipe import (
     clear_cache,
     delayed_cached,
     delayed_compute,
+    eager_cached,
 )
 
 CACHE_DIR = Path("cache/temp/")
@@ -385,13 +386,15 @@ def test_cached_load_time():
         return 1
 
     start = dt.datetime.utcnow()
-    _ = load_data().load()
+    res = load_data().load()
     delay = (dt.datetime.utcnow() - start).total_seconds()
+    assert res == 1
     assert delay > 0.95
 
     start = dt.datetime.utcnow()
-    _ = load_data().load()
+    res = load_data().load()
     delay = (dt.datetime.utcnow() - start).total_seconds()
+    assert res == 1
     assert delay < 0.95
 
 
@@ -430,6 +433,27 @@ def test_cached_long_name_many_arguments():
     start = dt.datetime.utcnow()
     _ = compute(*("a" * 20 for _ in range(20))).load()
     delay = (dt.datetime.utcnow() - start).total_seconds()
+    assert delay < 0.95
+
+
+def test_eager_cached_load():
+    clear_cache(CACHE_DIR)
+
+    @eager_cached(folder=CACHE_DIR, override=False)
+    def load_data():
+        time.sleep(1)
+        return 1
+
+    start = dt.datetime.utcnow()
+    res = load_data()
+    delay = (dt.datetime.utcnow() - start).total_seconds()
+    assert res == 1
+    assert delay > 0.95
+
+    start = dt.datetime.utcnow()
+    res = load_data()
+    delay = (dt.datetime.utcnow() - start).total_seconds()
+    assert res == 1
     assert delay < 0.95
 
 

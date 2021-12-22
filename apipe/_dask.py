@@ -128,7 +128,7 @@ def delayed_cached(
 
     def decorator(foo):
         """Delay and cache function output on disk (dask.delayed + apipe.cached)"""
-        # @functools.wraps(foo)  # Can't use: Delayed objects are immutable
+
         cached_foo = cached(
             name=name,
             name_prefix=name_prefix,
@@ -143,6 +143,7 @@ def delayed_cached(
             verbose=verbose,
         )(foo)
 
+        # @functools.wraps(foo)  # Can't use: Delayed objects are immutable
         @dask.delayed(name=name, pure=False, nout=nout)  # pylint: disable=E1120
         def delayed_cached_fool(*args, **kwargs):
             if _n_delayed_arguments(*args, **kwargs) > 0:
