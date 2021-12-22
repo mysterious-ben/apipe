@@ -1,4 +1,4 @@
-import functools
+# import functools
 import multiprocessing
 from contextlib import contextmanager
 from pathlib import Path
@@ -99,6 +99,12 @@ class DelayedParameters:
             self.update_many(old_params)
 
 
+def _n_delayed_arguments(*args, **kwargs) -> int:
+    n_delayed_args = sum(isinstance(a, Delayed) for a in args)
+    n_delayed_kwargs = sum(isinstance(v, Delayed) for _, v in kwargs.items())
+    return n_delayed_args + n_delayed_kwargs
+
+
 def delayed_cached(
     name: Optional[str] = None,
     name_prefix: str = "",
@@ -123,8 +129,7 @@ def delayed_cached(
     def decorator(foo):
         """Delay and cache function output on disk (dask.delayed + apipe.cached)"""
         # @functools.wraps(foo)  # Can't use: Delayed objects are immutable
-        @dask.delayed(name=name, pure=False, nout=nout)  # pylint: disable=E1120
-        @cached(
+        cached_foo = cached(
             name=name,
             name_prefix=name_prefix,
             parameters=parameters,
@@ -136,12 +141,16 @@ def delayed_cached(
             nout=nout,
             override=override,
             verbose=verbose,
-        )
-        @functools.wraps(foo)
-        def new_foo(*args, **kwargs):
-            return foo(*args, **kwargs)
+        )(foo)
 
-        return new_foo
+        @dask.delayed(name=name, pure=False, nout=nout)  # pylint: disable=E1120
+        def delayed_cached_fool(*args, **kwargs):
+            if _n_delayed_arguments(*args, **kwargs) > 0:
+                return foo(*args, **kwargs)
+            else:
+                return cached_foo(*args, **kwargs)
+
+        return delayed_cached_fool
 
     return decorator
 
