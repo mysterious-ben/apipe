@@ -1,18 +1,15 @@
-from __future__ import annotations
-
 import functools
 import json
 import multiprocessing
 import shutil
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import cloudpickle
 import numpy as np
 import pandas as pd
 import pyarrow  # noqa: F401
 import xxhash
-from dask.delayed import Delayed
 from loguru import logger
 
 xxhasher = xxhash.xxh64(seed=42)
@@ -77,11 +74,11 @@ def _get_cache_name(
     name_prefix: str,
     parameters: Optional[dict],
     ignore_args: Optional[bool],
-    ignore_kwargs: Optional[bool],
+    ignore_kwargs: Optional[Union[bool, List[str]]],
     kwargs_sep: str,
     foo: Callable,
-    args: list,
-    kwargs: dict,
+    args: Tuple[Any, ...],
+    kwargs: Dict[str, Any],
     max_name_len: Optional[int] = MAX_NAME_LEN,
 ) -> str:
     if ignore_args is None:
@@ -181,7 +178,7 @@ class CacheMeta:
             return [self._folder / (self.name + f"__{i}.{self.ftype}") for i in range(self.nout)]
 
     @classmethod
-    def from_file(cls, folder: Union[Path, str], name: str) -> CacheMeta:
+    def from_file(cls, folder: Union[Path, str], name: str) -> "CacheMeta":
         """Load metadata from cache metafile"""
 
         meta_path = cls._get_meta_path(folder=folder, name=name)
@@ -293,12 +290,23 @@ class CachedResultItem:
             return self.result.__cached_hash__()[self.item]
 
 
+def load(
+    cached_result: Union[CachedResultItem, Iterable[CachedResultItem]]
+) -> Union[Any, Tuple[Any, ...]]:
+    """Load cached objects"""
+
+    if isinstance(cached_result, CachedResultItem):
+        return cached_result.load()
+    else:
+        return tuple(r.load() for r in cached_result)
+
+
 def cached(
     name: Optional[str] = None,
     name_prefix: str = "",
     parameters: Optional[dict] = None,
     ignore_args: Optional[bool] = None,
-    ignore_kwargs: Optional[Union[bool, list[str]]] = None,
+    ignore_kwargs: Optional[Union[bool, List[str]]] = None,
     folder: Union[str, Path] = CACHE_FOLDER,
     ftype: str = "pickle",
     kwargs_sep: str = "|",
@@ -312,7 +320,6 @@ def cached(
     - Lazy computation and cache loading
     - Hashing of complex arguments (arrays and DataFrames)
     - Pickle and parquet serialization
-    - Support of Delayed objects
 
     Args:
         name: name of the cache file
@@ -340,7 +347,7 @@ def cached(
         """Cache function output on the disk"""
 
         @functools.wraps(foo)
-        def new_foo(*args, **kwargs):
+        def cached_foo(*args, **kwargs) -> Union[CachedResultItem, Tuple[CachedResultItem, ...]]:
             fullname = _get_cache_name(
                 name=name,
                 name_prefix=name_prefix,
@@ -361,6 +368,7 @@ def cached(
                     name=fullname, folder=folder, ftype=ftype, nout=nout, hash_value=None
                 )
             result = CachedResult(meta=meta, verbose=verbose)
+            output: Union[CachedResultItem, Tuple[CachedResultItem, ...]]
             if not override and result.exists():
                 # if the result (= cache OR cache + hash) exists, do nothing - just pass it on
                 # the cache will be loaded only if required later
@@ -372,33 +380,69 @@ def cached(
                     logger.info("Task {}: skip (cache exists)".format(result.meta.name))
             else:
                 # if the result does not exist, generate data and save cache
-                dask_args_detected = any(isinstance(a, Delayed) for a in args)
-                dask_kwargs_detected = any(isinstance(v, Delayed) for _, v in kwargs.items())
-                if not dask_args_detected and not dask_kwargs_detected:
-                    # eager load cache for all arguments
-                    args = [a.load() if isinstance(a, CachedResultItem) else a for a in args]
-                    kwargs = {
-                        k: v.load() if isinstance(v, CachedResultItem) else v
-                        for k, v in kwargs.items()
-                    }
-                    data = foo(*args, **kwargs)
-                    result.dump(data)
-                    if nout is not None:
-                        output = tuple(CachedResultItem(result, i) for i in range(nout))
-                    else:
-                        output = CachedResultItem(result, None)
-                    if verbose:
-                        logger.info(
-                            "Task {}: data has been computed and saved to cache".format(
-                                result.meta.name
-                            )
-                        )
+                # eager load all CachedResultItem arguments
+                args = tuple(a.load() if isinstance(a, CachedResultItem) else a for a in args)
+                kwargs = {
+                    k: v.load() if isinstance(v, CachedResultItem) else v
+                    for k, v in kwargs.items()
+                }
+                data = foo(*args, **kwargs)
+                result.dump(data)
+                if nout is not None:
+                    output = tuple(CachedResultItem(result, i) for i in range(nout))
                 else:
-                    # if any of the arguments is a Delayed object, return anything
-                    output = foo(*args, **kwargs)
+                    output = CachedResultItem(result, None)
+                if verbose:
+                    logger.info(
+                        "Task {}: data has been computed and saved to cache".format(
+                            result.meta.name
+                        )
+                    )
             return output
 
-        return new_foo
+        return cached_foo
+
+    return decorator
+
+
+def eager_cached(
+    name: Optional[str] = None,
+    name_prefix: str = "",
+    parameters: Optional[dict] = None,
+    ignore_args: Optional[bool] = None,
+    ignore_kwargs: Optional[Union[bool, List[str]]] = None,
+    folder: Union[str, Path] = CACHE_FOLDER,
+    ftype: str = "pickle",
+    kwargs_sep: str = "|",
+    nout: Optional[int] = None,
+    override: bool = False,
+    verbose: bool = True,
+):
+    """Cache function output on the disk (eager load)"""
+
+    def decorator(foo):
+        """Cache function output on the disk (eager load)"""
+
+        cached_foo = cached(
+            name=name,
+            name_prefix=name_prefix,
+            parameters=parameters,
+            ignore_args=ignore_args,
+            ignore_kwargs=ignore_kwargs,
+            folder=folder,
+            ftype=ftype,
+            kwargs_sep=kwargs_sep,
+            nout=nout,
+            override=override,
+            verbose=verbose,
+        )(foo)
+
+        @functools.wraps(foo)
+        def eager_cached_foo(*args, **kwargs):
+            cached_output = cached_foo(*args, **kwargs)
+            return load(cached_output)
+
+        return eager_cached_foo
 
     return decorator
 
