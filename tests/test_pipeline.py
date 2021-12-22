@@ -436,7 +436,7 @@ def test_cached_long_name_many_arguments():
     assert delay < 0.95
 
 
-def test_eager_cached_load():
+def test_eager_cached_load_time():
     clear_cache(CACHE_DIR)
 
     @eager_cached(folder=CACHE_DIR, override=False)
@@ -455,6 +455,23 @@ def test_eager_cached_load():
     delay = (dt.datetime.utcnow() - start).total_seconds()
     assert res == 1
     assert delay < 0.95
+
+
+def test_eager_cached_multiple_outputs():
+    clear_cache(CACHE_DIR)
+
+    @eager_cached(folder=CACHE_DIR, override=False)
+    def load_data():
+        return 1, np.zeros(4)
+
+    expected_res2 = np.zeros(4)
+    res1, res2 = load_data()
+    assert res1 == 1
+    np.testing.assert_equal(res2, expected_res2)
+
+    res1, res2 = load_data()
+    assert res1 == 1
+    np.testing.assert_equal(res2, expected_res2)
 
 
 def test_dask_cached_load_time():
