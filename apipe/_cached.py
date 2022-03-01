@@ -19,39 +19,57 @@ MAX_NAME_LEN = 240  # limit length of cache file name (not counting file extenti
 CACHE_FOLDER = "cache"
 
 
-def _hash_ndarray(arr: np.ndarray):
+def _hash_ndarray(arr: np.ndarray) -> str:
     try:
-        data = arr if np.issubdtype(arr.dtype, np.number) else str(arr)
+        data = arr if np.issubdtype(arr.dtype, np.number) else cloudpickle.dumps(arr)
     except TypeError:  # numpy cannot determine data type
-        data = str(arr)
+        data = cloudpickle.dumps(arr)
     try:
         xxhasher.update(data)
     except ValueError:  # cannot hash M-type array
-        data = str(arr)
+        data = cloudpickle.dumps(arr)
         xxhasher.update(data)
     h = str(xxhasher.intdigest())
-    xxhasher.reset()
     return h
 
 
 def _hash_obj(obj, max_len: Optional[int] = MAX_ARG_HASH_LEN) -> str:
+    xxhasher.reset()
     if isinstance(obj, np.ndarray):
         h = _hash_ndarray(obj)
     elif isinstance(obj, pd.Series):
-        h = _hash_ndarray(obj.values)
+        h = str(obj.name)
+        h += _hash_ndarray(obj.index.values)
+        h += _hash_ndarray(obj.values)
     elif isinstance(obj, pd.DataFrame):
-        h_ = ""
+        h_ = _hash_ndarray(obj.index.values)
         for c in obj:
-            h_ = h_ + _hash_ndarray(obj[c].values)
+            h_ += str(c) + _hash_ndarray(obj[c].values)
         xxhasher.update(h_)
         h = str(xxhasher.intdigest())
-        xxhasher.reset()
-    else:
+    elif (
+        isinstance(obj, str)
+        or isinstance(obj, bool)
+        or isinstance(obj, int)
+        or isinstance(obj, float)
+        or isinstance(obj, complex)
+        or isinstance(obj, dict)
+        or isinstance(obj, frozenset)
+        or isinstance(obj, set)
+        or isinstance(obj, list)
+        or isinstance(obj, tuple)
+    ):
         h = str(obj)
+    elif isinstance(obj, bytes):
+        xxhasher.update(obj)
+        h = str(xxhasher.intdigest())
+    else:
+        pickled_obj = cloudpickle.dumps(obj)
+        xxhasher.update(pickled_obj)
+        h = str(xxhasher.intdigest())
     if (max_len is not None) and (len(h) > max_len):
         xxhasher.update(h)
         h_sffx = str(xxhasher.intdigest())
-        xxhasher.reset()
         h = f"{h[: max_len - len(h_sffx) - 1]}-{h_sffx}"
     return h
 
@@ -118,9 +136,9 @@ def _get_cache_name(
         assert isinstance(ignore_kwargs, bool)
     full_name = name_prefix + "_".join(_n)
     if (max_name_len is not None) and (len(full_name) > max_name_len):
+        xxhasher.reset()
         xxhasher.update(full_name)
         h_sffx = str(xxhasher.intdigest())
-        xxhasher.reset()
         full_name = f"{full_name[: max_name_len - len(h_sffx) - 1]}-{h_sffx}"
     return full_name
 
