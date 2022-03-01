@@ -53,11 +53,6 @@ def _hash_obj(obj, max_len: Optional[int] = MAX_ARG_HASH_LEN) -> str:
         or isinstance(obj, int)
         or isinstance(obj, float)
         or isinstance(obj, complex)
-        or isinstance(obj, dict)
-        or isinstance(obj, frozenset)
-        or isinstance(obj, set)
-        or isinstance(obj, list)
-        or isinstance(obj, tuple)
     ):
         h = str(obj)
     elif isinstance(obj, bytes):
