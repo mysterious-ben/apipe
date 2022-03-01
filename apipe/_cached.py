@@ -156,7 +156,7 @@ def _cached_load(ftype: str, path: Path) -> Any:
 def _cached_save(data: Any, ftype: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if ftype == "parquet":
-        data.to_parquet(path, index=False, allow_truncated_timestamps=True)
+        data.to_parquet(path, index=True, allow_truncated_timestamps=True)
     elif ftype == "pickle":
         cloudpickle.dump(data, open(path, "wb"))
     else:
