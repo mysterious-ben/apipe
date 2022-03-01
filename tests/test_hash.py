@@ -60,6 +60,12 @@ big_datetime64_arrays = tuple(
     for arr in big_int_arrays
 )
 
+lists_with_big_arrays = (
+    [np.asarray(range(10000))],
+    [np.asarray(list(range(4999)) + [0] + list(range(5000, 10000)))],
+)
+
+
 pandas_series = (
     pd.Series(range(5)),
     pd.Series(range(1, 6)),
@@ -105,6 +111,7 @@ pandas_frames = (
         big_datetime_arrays,
         big_timedelta_arrays,
         big_datetime64_arrays,
+        lists_with_big_arrays,
         pandas_series,
         pandas_frames,
     ],
