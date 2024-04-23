@@ -1,19 +1,16 @@
 repos:
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
-    hooks:
-      - id: isort
-
   - repo: https://github.com/psf/black
-    rev: 21.10b0
+    rev: 24.2.0
     hooks:
       - id: black
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.5
     hooks:
-      - id: flake8
+      - id: ruff
+        args: [--fix]
+      # - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: 'v0.910'
@@ -22,12 +19,12 @@ repos:
         args: [--ignore-missing-imports]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.5.0
     hooks:
       - id: debug-statements
       - id: check-yaml
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: ["--maxkb=1000"]
       - id: check-merge-conflict
 
   - repo: local
@@ -50,3 +47,11 @@ repos:
         'types': [python]
         pass_filenames: false
         stages: [commit]
+
+  - repo: local
+    hooks:
+      - id: poetry_export
+        name: poetry_export
+        entry: poetry export --without-hashes -o requirements.txt
+        language: system
+        pass_filenames: false

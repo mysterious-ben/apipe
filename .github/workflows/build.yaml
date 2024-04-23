@@ -16,7 +16,7 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ['3.9', '3.10', '3.11']
 
     steps:
     - name: Clone repository
@@ -27,38 +27,22 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with isort (check only)
-      run: |
-        pip install isort==5.10.1
-        isort . --check-only
-    - name: Lint with black (check only)
-      run: |
-        pip install black==21.12b0
-        black . --check
-    - name: Lint with flake8
-      run: |
-        pip install flake8
-        flake8 . --count --show-source --statistics
-    - name: Lint with mypy
-      run: |
-        pip install mypy
-        mypy . --ignore-missing-imports
-    - name: Lint with pylint
-      run: |
-        pip install pylint
-        pylint apipe/ -E
-    - name: Run test suite
-      run: |
-        pip install pytest
-        pytest -vv -m "not integration"
     - name: Install poetry
       run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        poetry --version
+        pip install poetry
+    - name: Install dependencies using poetry
+      run: |
+        poetry install
+    - name: Check code formatting with black
+      run: |
+        poetry run black . --check
+    - name: Check code with ruff
+      run: |
+        poetry run ruff check .
     - name: Build python package
       run: |
+        echo "Build package"
         poetry build
+    - name: Run testsuite
+      run: |
+        poetry run pytest -vv
