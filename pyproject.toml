@@ -15,8 +15,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.9"
 numpy = "^1.25"
-pandas = "^2.1"
-pyarrow = "^5"
+pandas = {extras = ["pyarrow"], version = "^2.1"}
 dask = {extras = ["delayed"], version = "^2022"}
 xxhash = "^3.4"
 cloudpickle = "^2.0"
